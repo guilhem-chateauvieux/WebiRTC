@@ -7,28 +7,33 @@
  * # WebRTCCtrl
  * Controller of the webRtcApp
  */
+
 angular.module('webRtcApp')
-  .controller('WebRTCCtrl', function ($scope) {
+  .controller('WebRTCCtrl', function ($scope) 
+
     $scope.awesomeThings = [
       'HTML5 Boilerplate',
       'AngularJS',
       'Karma'
     ];
 
-    var clientRoom = "azerty";    //prompt("Enter room name:");
+    /**
+     * Variables used by the script
+     */
+
+    var clientRoom = prompt("Enter room name:");
     var clientId;
+    var caller = true;
 
     var socket;
 
     var localStream;
     var localVideo = document.querySelector("#localVideoElement");
     var remoteVideo = document.querySelector("#remoteVideoElement");
-    var pc;
     var sendChannel, receiveChannel;
     var sendTextarea = document.getElementById("dataChannelSend");
     var receiveTextarea = document.getElementById("dataChannelReceive");
-    var caller = true;
-
+    
     var pc_config = {"iceServers": [{"url": "stun:stun.l.google.com:19302"},
       {"url":"turn:my_username@176.31.150.140", "credential":"my_password"}]};
     var pc_constraints = {
@@ -36,8 +41,7 @@ angular.module('webRtcApp')
         {'DtlsSrtpKeyAgreement': true},
         {'RtpDataChannels': true}
       ]};
-
-    pc = new webkitRTCPeerConnection(pc_config, pc_constraints);
+    var pc = new webkitRTCPeerConnection(pc_config, pc_constraints);
     pc.onicecandidate = gotIceCandidate;
     pc.onaddstream = gotRemoteStream;
     pc.ondatachannel = gotReceiveChannel;
@@ -74,6 +78,10 @@ angular.module('webRtcApp')
       },
       audio: true
     };
+
+    /**
+     * Socket I/O part for a custom signalisation system
+     */
 
     if (clientRoom !== "") {
       socket = io.connect('http://ged.webinage.fr:9000/');
@@ -132,6 +140,10 @@ angular.module('webRtcApp')
       hangupButton.disabled = true;
       pc.close();
     });
+
+    /**
+     * Functions called by the HTML5 WebRTC page
+     */
 
     function toggle() {
       switch(getVideoButton.innerHTML) {
@@ -200,7 +212,6 @@ angular.module('webRtcApp')
       sendChannel.onopen = handleSendChannelStateChange;
       sendChannel.onclose = handleSendChannelStateChange;
 
-      //pc.addStream(localStream);
       pc.createOffer(gotLocalOfferDescription, handleError);
 
       sendButton.disabled = false;
