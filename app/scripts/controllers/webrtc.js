@@ -69,6 +69,11 @@ angular.module('webRtcApp')
       audio: true
     };
 
+    var simpleConstraints = {
+      video: true,
+      audio: true
+    };
+
     var cifConstraints = {
       video: {
         mandatory: {
@@ -158,7 +163,7 @@ angular.module('webRtcApp')
 
     function start() {
       if (hasGetUserMedia()) {
-        navigator.getUserMedia(cifConstraints, handleStream, handleError);
+        navigator.getUserMedia(simpleConstraints, handleStream, handleError);
         getVideoButton.innerHTML = "Stop";
       } else {
         alert('"getUserMedia()" function is not supported in this browser.');
