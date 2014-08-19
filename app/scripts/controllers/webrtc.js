@@ -129,9 +129,8 @@ angular.module('webRtcApp')
     });
 
     socket.on('iceCandidate', function (iceCandidate) {
-      socket.emit('iceCandidate', {clientRoom: clientRoom, clientId: clientId, iceCandidate: iceCandidate});
       var unserialize = JSON.parse(iceCandidate);
-      //console.log('Remote Candidate recieved: ' + unserialize.candidate);
+      console.log('Remote Candidate recieved: ' + unserialize.candidate);
       pc.addIceCandidate(new RTCIceCandidate(unserialize));
     });
 
