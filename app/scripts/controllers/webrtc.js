@@ -7,10 +7,8 @@
  * # WebRTCCtrl
  * Controller of the webRtcApp
  */
-
 angular.module('webRtcApp')
-  .controller('WebRTCCtrl', function ($scope) 
-
+  .controller('WebRTCCtrl', function ($scope) {
     $scope.awesomeThings = [
       'HTML5 Boilerplate',
       'AngularJS',
