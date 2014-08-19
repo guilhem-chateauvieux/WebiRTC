@@ -22,6 +22,7 @@ angular.module('webRtcApp')
     var clientRoom = prompt("Enter room name:");
     var clientId;
     var caller = true;
+    var hangUpReceiver = false;
 
     var socket;
 
@@ -43,6 +44,7 @@ angular.module('webRtcApp')
     pc.onicecandidate = gotIceCandidate;
     pc.onaddstream = gotRemoteStream;
     pc.ondatachannel = gotReceiveChannel;
+    var iceCandidatesArray = new Array();
 
     var getVideoButton = document.getElementById("getVideoButton");
     var callButton = document.getElementById("callButton");
@@ -97,7 +99,7 @@ angular.module('webRtcApp')
     });
 
     socket.on('full', function (room){
-      console.log('Room ' + room + ' is full');
+      alert('Room ' + clientRoom + ' is full. Reload the page and try another room name.');
     });
 
     socket.on('message', function (message) {
@@ -134,9 +136,9 @@ angular.module('webRtcApp')
     });
 
     socket.on('hangup', function () {
+      hangUpReceiver = true;
       console.log('Remote Client has hung up');
-      hangupButton.disabled = true;
-      pc.close();
+      hangup();
     });
 
     /**
@@ -218,10 +220,8 @@ angular.module('webRtcApp')
     function hangup() {
       hangupButton.disabled = true;
       sendChannel.close();
-      receiveChannel.close();
       if (caller) {
         getVideoButton.disabled = false;
-        callButton.disabled = false;
         sendButton.disabled = true;
       } else {
         stop();
@@ -232,7 +232,9 @@ angular.module('webRtcApp')
       dataChannelReceive.value = "";
       dataChannelSend.disabled = true;
       dataChannelSend.placeholder = "Press Start, enter some text, then press Send.";
-      socket.emit('hangup', {clientRoom: clientRoom, clientId: clientId});
+      if (!hangUpReceiver) {
+        socket.emit('hangup', {clientRoom: clientRoom, clientId: clientId});
+      }
     }
 
     function gotLocalOfferDescription(description){
@@ -265,10 +267,34 @@ angular.module('webRtcApp')
 
     function gotIceCandidate(event){
       if (event.candidate) {
-        //console.log('Local Candidate: ' + event.candidate.candidate);
-        var serialize = JSON.stringify(event.candidate);
-        socket.emit('iceCandidate', {clientRoom: clientRoom, clientId: clientId, iceCandidate: serialize});
+        if (iceCandidatesArray.length == 0) {
+          iceCandidatesArray.push(0);
+          iceCandidatesArray[0] = event.candidate;
+          console.log('New Local Candidate: ' + event.candidate.candidate);
+          var serialize = JSON.stringify(event.candidate);
+          socket.emit('iceCandidate', {clientRoom: clientRoom, clientId: clientId, iceCandidate: serialize});
+        } else {
+          if (newIceCandidate(event.candidate)) {
+            var key = iceCandidatesArray.length;
+            iceCandidatesArray.push(key);
+            iceCandidatesArray[key] = event.candidate;
+            console.log('New Local Candidate: ' + event.candidate.candidate);
+            var serialize = JSON.stringify(event.candidate);
+            socket.emit('iceCandidate', {clientRoom: clientRoom, clientId: clientId, iceCandidate: serialize});
+          } else {
+            console.log('Existing Local Candidate: ' + event.candidate.candidate);
+          }
+        }
       }
+    }
+
+    function newIceCandidate(candidate) {
+      for (var key = 0; key < iceCandidatesArray.length; key++) {
+        if (candidate.candidate == iceCandidatesArray[key].candidate) {
+          return false;
+        }
+      }
+      return true;
     }
 
     function sendData() {

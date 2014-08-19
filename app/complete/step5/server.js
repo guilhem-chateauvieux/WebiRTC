@@ -7,7 +7,7 @@ app.get('/', function(req, res){
 	res.sendfile('index.html');
 });
 
-var     roomsArray = new Array();
+var roomsArray = new Array();
 
 io.on('connection', function(socket){
 
@@ -20,15 +20,19 @@ io.on('connection', function(socket){
 			console.log('Room ' + room + ' created successfully');
 		}
 
-		var clientId = generateId();
-		var index = roomsArray[room].length;
+		if (roomsArray[room].length < 2) {
+			var clientId = generateId();
+			var index = roomsArray[room].length;
 
-		roomsArray[room].push(index);
-		roomsArray[room][index] = {clientRoom: room, clientId: clientId, clientSocket: socket};
-        socket.emit('joined', clientId);
+			roomsArray[room].push(index);
+			roomsArray[room][index] = {clientRoom: room, clientId: clientId, clientSocket: socket};
+	        socket.emit('joined', clientId);
 
-		roomTransfer(room, clientId, 'A client has joined your room under ' + clientId + ' identifier');
-		displayRoomMembers(room);
+			roomTransfer(room, clientId, 'A client has joined your room under ' + clientId + ' identifier');
+			displayRoomMembers(room);
+		} else {
+			socket.emit('full');
+		}
 
 	});
 
