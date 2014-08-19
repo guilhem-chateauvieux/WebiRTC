@@ -112,6 +112,7 @@ angular.module('webRtcApp')
 
     socket.on('RTCPeerConnectionOffer description', function (description) {
       caller = false;
+      alert("Incoming call...\nPlease grant your web browser access to your webcam.");
       getVideoButton.disabled = true;
       callButton.disabled = true;
 
