@@ -20,6 +20,61 @@ angular.module('webRtcApp')
 
     var socket;
 
+    var localStream;
+    var localVideo = document.querySelector("#localVideoElement");
+    var remoteVideo = document.querySelector("#remoteVideoElement");
+    var pc;
+    var sendChannel, receiveChannel;
+    var sendTextarea = document.getElementById("dataChannelSend");
+    var receiveTextarea = document.getElementById("dataChannelReceive");
+    var caller = true;
+
+    var pc_config = {"iceServers": [{"url": "stun:stun.l.google.com:19302"},
+      {"url":"turn:my_username@176.31.150.140", "credential":"my_password"}]};
+    var pc_constraints = {
+      'optional': [
+        {'DtlsSrtpKeyAgreement': true},
+        {'RtpDataChannels': true}
+      ]};
+
+    pc = new webkitRTCPeerConnection(pc_config, pc_constraints);
+    pc.onicecandidate = gotIceCandidate;
+    pc.onaddstream = gotRemoteStream;
+    pc.ondatachannel = gotReceiveChannel;
+
+    var getVideoButton = document.getElementById("getVideoButton");
+    var callButton = document.getElementById("callButton");
+    var hangupButton = document.getElementById("hangupButton");
+    var sendButton = document.getElementById("sendButton");
+    getVideoButton.disabled = false;
+    callButton.disabled = true;
+    hangupButton.disabled = true;
+    sendButton.disabled = true;
+    getVideoButton.onclick = toggle;
+    callButton.onclick = call;
+    hangupButton.onclick = hangup;
+    sendButton.onclick = sendData;
+
+    var hdConstraints = {
+      video: {
+        mandatory: {
+          minWidth: 1280,
+          minHeight: 720
+        }
+      },
+      audio: true
+    };
+
+    var vgaConstraints = {
+      video: {
+        mandatory: {
+          maxWidth: 640,
+          maxHeight: 360
+        }
+      },
+      audio: true
+    };
+
     if (clientRoom !== "") {
       socket = io.connect('http://ged.webinage.fr:9000/');
       console.log('Trying to join ' + clientRoom + ' room...');
@@ -51,7 +106,9 @@ angular.module('webRtcApp')
       caller = false;
       getVideoButton.disabled = true;
       callButton.disabled = true;
+
       start();
+
       console.log('RTCPeerConnection offer recieved (' + description + ')');
       var unserialize = JSON.parse(description);
       gotRemoteOfferDescription(unserialize);
@@ -76,45 +133,6 @@ angular.module('webRtcApp')
       pc.close();
     });
 
-    var localStream;
-    var localVideo = document.querySelector("#localVideoElement");
-    var remoteVideo = document.querySelector("#remoteVideoElement");
-    var pc;
-    var caller = true;
-
-    var pc_config = {"iceServers": [{"url": "stun:stun.l.google.com:19302"},
-      {"url":"turn:my_username@176.31.150.140", "credential":"my_password"}]};
-    var pc_constraints = {
-      'optional': [
-        {'DtlsSrtpKeyAgreement': true}
-      ]};
-
-    pc = new webkitRTCPeerConnection(pc_config, pc_constraints);
-    pc.onicecandidate = gotIceCandidate;
-    pc.onaddstream = gotRemoteStream;
-
-    var getVideoButton = document.getElementById("getVideoButton");
-    var callButton = document.getElementById("callButton");
-    var hangupButton = document.getElementById("hangupButton");
-    var sendButton = document.getElementById("sendButton");
-    getVideoButton.disabled = false;
-    callButton.disabled = true;
-    hangupButton.disabled = true;
-    sendButton.disabled = true;
-    getVideoButton.onclick = toggle;
-    callButton.onclick = call;
-    hangupButton.onclick = hangup;
-
-    var hdConstraints = {
-      video: {
-        mandatory: {
-          minWidth: 1280,
-          minHeight: 720
-        }
-      },
-      audio: true
-    };
-
     function toggle() {
       switch(getVideoButton.innerHTML) {
         case "Start":
@@ -128,7 +146,7 @@ angular.module('webRtcApp')
 
     function start() {
       if (hasGetUserMedia()) {
-        navigator.getUserMedia(hdConstraints, handleStream, handleError);
+        navigator.getUserMedia(vgaConstraints, handleStream, handleError);
         getVideoButton.innerHTML = "Stop";
       } else {
         alert('"getUserMedia()" function is not supported in this browser.');
@@ -170,6 +188,18 @@ angular.module('webRtcApp')
       callButton.disabled = true;
       hangupButton.disabled = false;
 
+      try {
+        // Reliable Data Channels not yet supported in Chrome
+        sendChannel = pc.createDataChannel("sendDataChannel",
+          {reliable: false});
+        sendChannel.onmessage = handleMessage;
+      } catch (e) {
+        alert('Failed to create data channel. ' +
+              'You need Chrome M25 or later with RtpDataChannel enabled');
+      }
+      sendChannel.onopen = handleSendChannelStateChange;
+      sendChannel.onclose = handleSendChannelStateChange;
+
       //pc.addStream(localStream);
       pc.createOffer(gotLocalOfferDescription, handleError);
 
@@ -178,6 +208,8 @@ angular.module('webRtcApp')
 
     function hangup() {
       hangupButton.disabled = true;
+      sendChannel.close();
+      receiveChannel.close();
       if (caller) {
         getVideoButton.disabled = false;
         callButton.disabled = false;
@@ -187,8 +219,11 @@ angular.module('webRtcApp')
       }
       pc.close();
       pc = null;
+      dataChannelSend.value = "";
+      dataChannelReceive.value = "";
+      dataChannelSend.disabled = true;
+      dataChannelSend.placeholder = "Press Start, enter some text, then press Send.";
       socket.emit('hangup', {clientRoom: clientRoom, clientId: clientId});
-      //TODO socket.emit('hangup') sur lequel on close() et null la pc de l'appelé
     }
 
     function gotLocalOfferDescription(description){
@@ -201,7 +236,6 @@ angular.module('webRtcApp')
     function gotRemoteOfferDescription(description){
       pc.setRemoteDescription(new RTCSessionDescription(description));
       console.log('Remote RTCPeerConnection offer description added.');
-      //pc.createAnswer(gotLocalAnswerDescription, handleError);
     }
 
     function gotLocalAnswerDescription(description){
@@ -225,6 +259,46 @@ angular.module('webRtcApp')
         //console.log('Local Candidate: ' + event.candidate.candidate);
         var serialize = JSON.stringify(event.candidate);
         socket.emit('iceCandidate', {clientRoom: clientRoom, clientId: clientId, iceCandidate: serialize});
+      }
+    }
+
+    function sendData() {
+      var data = sendTextarea.value;
+      sendChannel.send(data);
+    }
+
+    function gotReceiveChannel(event) {
+      sendChannel = event.channel;
+      sendChannel.onmessage = handleMessage;
+      sendChannel.onopen = handleReceiveChannelStateChange;
+      sendChannel.onclose = handleReceiveChannelStateChange;
+    }
+
+    function handleMessage(event) {
+      receiveTextarea.value = event.data;
+    }
+
+    function handleSendChannelStateChange() {
+      var readyState = sendChannel.readyState;
+      trace('Send channel state is: ' + readyState);
+      enableMessageInterface(readyState == "open");
+    }
+
+    function handleReceiveChannelStateChange() {
+      var readyState = sendChannel.readyState;
+      trace('Receive channel state is: ' + readyState);
+      enableMessageInterface(readyState == "open");
+    }
+
+    function enableMessageInterface(shouldEnable) {
+        if (shouldEnable) {
+        dataChannelSend.disabled = false;
+        dataChannelSend.focus();
+        dataChannelSend.placeholder = "";
+        sendButton.disabled = false;
+      } else {
+        dataChannelSend.disabled = true;
+        sendButton.disabled = true;
       }
     }
 
