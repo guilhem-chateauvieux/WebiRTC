@@ -69,11 +69,11 @@ angular.module('webRtcApp')
       audio: true
     };
 
-    var vgaConstraints = {
+    var cifConstraints = {
       video: {
         mandatory: {
-          maxWidth: 640,
-          maxHeight: 360
+          maxWidth: 320,
+          maxHeight: 240
         }
       },
       audio: true
@@ -157,7 +157,7 @@ angular.module('webRtcApp')
 
     function start() {
       if (hasGetUserMedia()) {
-        navigator.getUserMedia(vgaConstraints, handleStream, handleError);
+        navigator.getUserMedia(cifConstraints, handleStream, handleError);
         getVideoButton.innerHTML = "Stop";
       } else {
         alert('"getUserMedia()" function is not supported in this browser.');
