@@ -73,6 +73,16 @@ angular.module('webRtcApp')
     hangupButton.onclick = hangup;
     sendButton.onclick = sendData;
 
+    var fhdConstraints = {
+      video: {
+        mandatory: {
+          minWidth: 1920,
+          minHeight: 1080
+        }
+      },
+      audio: true
+    };
+
     var hdConstraints = {
       video: {
         mandatory: {
@@ -195,20 +205,10 @@ angular.module('webRtcApp')
     function start() {
       if (hasGetUserMedia()) {
         var constraints;
-        switch(getVideoButton.innerHTML) {
-          case "Start":
-            constraints = cifConstraints;
-            break;
-          case "Stop":
-            constraints = vgaConstraints;
-            break;
-          case "Stop":
-            constraints = hdConstraints;
-            break;
-          case "Stop":
-            constraints = fhdConstraints;
-            break;
-        }
+        if (cifResolution.checked) constraints = cifConstraints;
+        if (vgaResolution.checked) constraints = vgaConstraints;
+        if (hdResolution.checked) constraints = hdConstraints;
+        if (fhdResolution.checked) constraints = fhdConstraints;
         cifResolution.disabled = true;
         vgaResolution.disabled = true;
         hdResolution.disabled = true;
@@ -229,6 +229,10 @@ angular.module('webRtcApp')
         getVideoButton.innerHTML = "Start";
         callButton.disabled = true;
       }
+      cifResolution.disabled = false;
+      vgaResolution.disabled = false;
+      hdResolution.disabled = false;
+      fhdResolution.disabled = false;
     }
     
     // Checks if the web browser can handle audio/video access to hardware sources
