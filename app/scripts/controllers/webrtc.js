@@ -80,11 +80,11 @@ angular.module('webRtcApp')
       audio: true
     };
 
-    var cifConstraints = {
+    var vgaConstraints = {
       video: {
         mandatory: {
-          maxWidth: 320,
-          maxHeight: 240
+          maxWidth: 640,
+          maxHeight: 480
         }
       },
       audio: true
@@ -172,7 +172,7 @@ angular.module('webRtcApp')
     // Gets an audio/video stream from the web browser under specific constraints
     function start() {
       if (hasGetUserMedia()) {
-        navigator.getUserMedia(simpleConstraints, handleStream, handleError);
+        navigator.getUserMedia(vgaConstraints, handleStream, handleError);
         getVideoButton.innerHTML = "Stop";
       } else {
         alert('"getUserMedia()" function is not supported in this browser.');
