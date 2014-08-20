@@ -1,12 +1,13 @@
 <div class="row">
   <div class="col-lg-1"></div>
   <div class="col-lg-4">
+  	<p><div id="room"></div></p>
  	<p>Local WebCam</p>
 	<div class="col-lg-12">
 		<video autoplay="true" id="localVideoElement"></video>
 	</div>
 	<div class="col-lg-12">
-		<textarea class="form-control" id="dataChannelSend" disabled placeholder="Press Start, enter some text, then press Send."></textarea>
+		<textarea class="form-control" id="dataChannelSend" disabled placeholder="Press Call, enter some text, then press Send."></textarea>
 		<button class="btn btn-default" id="sendButton">Send</button>
 	</div>
 	<div class="col-lg-12" id="buttons" style="margin-top:8px;">
@@ -17,6 +18,7 @@
   </div>
   <div class="col-lg-2"></div>
   <div class="col-lg-4">
+  	<p><div id="identifier"></div></p>
   	<p>Remote WebCam</p>
   	<div class="col-lg-12">
 		<video autoplay="true" id="remoteVideoElement"></video>

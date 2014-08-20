@@ -20,7 +20,13 @@ angular.module('webRtcApp')
      */
 
     var clientRoom = prompt("Enter room name:");
+    if (clientRoom == "") {
+      clientRoom = "default";
+    }
+    var displayRoom = document.getElementById("room");
+    displayRoom.innerHTML = "Current room: \"" + clientRoom + "\"";
     var clientId;
+    var displayIdentifier = document.getElementById("identifier");
     var caller = true;
     var hangUpReceiver = false;
 
@@ -100,10 +106,12 @@ angular.module('webRtcApp')
 
     socket.on('joined', function (id){
       clientId = id;
+      displayIdentifier.innerHTML = "Status: connected under \"" + clientId + "\" identifier";
       console.log('You have now joined ' + clientRoom + ' room under ' + clientId + ' identifier');
     });
 
     socket.on('full', function (room){
+      displayIdentifier.innerHTML = "Status: unable to connect, room is full";
       alert('Room ' + clientRoom + ' is full. Reload the page and try another room name.');
     });
 
@@ -161,6 +169,7 @@ angular.module('webRtcApp')
       }
     }
 
+    // Gets an audio/video stream from the web browser under specific constraints
     function start() {
       if (hasGetUserMedia()) {
         navigator.getUserMedia(simpleConstraints, handleStream, handleError);
@@ -170,6 +179,7 @@ angular.module('webRtcApp')
       }
     }
 
+    // Releases the access to audio/video source through the web browser
     function stop() {
       localVideo.pause();
       localVideo.src = "";
@@ -180,12 +190,14 @@ angular.module('webRtcApp')
       }
     }
     
+    // Checks if the web browser can handle audio/video access to hardware sources
     function hasGetUserMedia() {
       navigator.getUserMedia = (navigator.getUserMedia || navigator.webkitGetUserMedia ||
         navigator.mozGetUserMedia || navigator.msGetUserMedia || navigator.oGetUserMedia);
       return !!navigator.getUserMedia;
     }
 
+    // Function called in case of successful access to audio/video stream
     function handleStream(stream) {
       localStream = stream;
       console.log('Local stream added');
@@ -200,6 +212,7 @@ angular.module('webRtcApp')
       }
     }
 
+    // Initiates a call between the local and remote peer
     function call() {
       getVideoButton.disabled = true;
       callButton.disabled = true;
@@ -222,6 +235,7 @@ angular.module('webRtcApp')
       sendButton.disabled = false;
     }
 
+    // Closes the established peer to peer connection
     function hangup() {
       hangupButton.disabled = true;
       sendChannel.close();
@@ -236,7 +250,7 @@ angular.module('webRtcApp')
       dataChannelSend.value = "";
       dataChannelReceive.value = "";
       dataChannelSend.disabled = true;
-      dataChannelSend.placeholder = "Press Start, enter some text, then press Send.";
+      dataChannelSend.placeholder = "Call ended, please reload the page.";
       if (!hangUpReceiver) {
         socket.emit('hangup', {clientRoom: clientRoom, clientId: clientId});
       }
@@ -266,10 +280,12 @@ angular.module('webRtcApp')
       console.log('Remote RTCPeerConnection answer description added.');
     }
 
+    // Function called on an stream reception by a peer
     function gotRemoteStream(event){
       remoteVideo.src = URL.createObjectURL(event.stream);
     }
 
+    // Function called on an ICE candidate reception by a peer
     function gotIceCandidate(event){
       if (event.candidate) {
         if (iceCandidatesArray.length == 0) {
@@ -293,6 +309,7 @@ angular.module('webRtcApp')
       }
     }
 
+    // Checks if the received ICE candidate is new or duplicated
     function newIceCandidate(candidate) {
       for (var key = 0; key < iceCandidatesArray.length; key++) {
         if (candidate.candidate == iceCandidatesArray[key].candidate) {
@@ -302,8 +319,10 @@ angular.module('webRtcApp')
       return true;
     }
 
+    // Sends chars string data through the established data channel
     function sendData() {
       var data = sendTextarea.value;
+      dataChannelSend.value = "";
       sendChannel.send(data);
     }
 
@@ -342,6 +361,7 @@ angular.module('webRtcApp')
       }
     }
 
+    // Log unexpected behaviour in the console of the web browser
     function handleError(error) {
       console.log('Error', error);
     }
