@@ -15,9 +15,13 @@ angular.module('webRtcApp')
       'Karma'
     ];
 
+    ////////////////////////////////////////////////
+
     /**
      * Variables used by the script
      */
+
+    ////////////////////////////////////////////////
 
     var clientRoom = prompt("Enter room name:");
     if (clientRoom == "") {
@@ -56,6 +60,10 @@ angular.module('webRtcApp')
     var callButton = document.getElementById("callButton");
     var hangupButton = document.getElementById("hangupButton");
     var sendButton = document.getElementById("sendButton");
+    var cifResolution = document.getElementById("cifResolution");
+    var vgaResolution = document.getElementById("vgaResolution");
+    var hdResolution = document.getElementById("hdResolution");
+    var fhdResolution = document.getElementById("fhdResolution");
     getVideoButton.disabled = false;
     callButton.disabled = true;
     hangupButton.disabled = true;
@@ -75,11 +83,6 @@ angular.module('webRtcApp')
       audio: true
     };
 
-    var simpleConstraints = {
-      video: true,
-      audio: true
-    };
-
     var vgaConstraints = {
       video: {
         mandatory: {
@@ -90,9 +93,23 @@ angular.module('webRtcApp')
       audio: true
     };
 
+    var cifConstraints = {
+      video: {
+        mandatory: {
+          maxWidth: 320,
+          maxHeight: 240
+        }
+      },
+      audio: true
+    };
+
+    ////////////////////////////////////////////////
+
     /**
      * Socket I/O part for a custom signalisation system
      */
+
+    ////////////////////////////////////////////////
 
     if (clientRoom !== "") {
       socket = io.connect('http://ged.webinage.fr:9000/');
@@ -154,10 +171,15 @@ angular.module('webRtcApp')
       hangup();
     });
 
+    ////////////////////////////////////////////////
+
     /**
      * Functions called by the HTML5 WebRTC page
      */
 
+    ////////////////////////////////////////////////
+
+    // Calls a different function according to the green button label
     function toggle() {
       switch(getVideoButton.innerHTML) {
         case "Start":
@@ -172,7 +194,26 @@ angular.module('webRtcApp')
     // Gets an audio/video stream from the web browser under specific constraints
     function start() {
       if (hasGetUserMedia()) {
-        navigator.getUserMedia(vgaConstraints, handleStream, handleError);
+        var constraints;
+        switch(getVideoButton.innerHTML) {
+          case "Start":
+            constraints = cifConstraints;
+            break;
+          case "Stop":
+            constraints = vgaConstraints;
+            break;
+          case "Stop":
+            constraints = hdConstraints;
+            break;
+          case "Stop":
+            constraints = fhdConstraints;
+            break;
+        }
+        cifResolution.disabled = true;
+        vgaResolution.disabled = true;
+        hdResolution.disabled = true;
+        fhdResolution.disabled = true;
+        navigator.getUserMedia(constraints, handleStream, handleError);
         getVideoButton.innerHTML = "Stop";
       } else {
         alert('"getUserMedia()" function is not supported in this browser.');
@@ -202,13 +243,13 @@ angular.module('webRtcApp')
       localStream = stream;
       console.log('Local stream added');
       localVideo.src = URL.createObjectURL(stream);
-      localVideo.classList.add('mirror');
-      pc.addStream(stream);
+      localVideo.classList.add('mirror');   // Horizontal mirror effect added on local video diplay
+      pc.addStream(stream);   // Adds local accessed stream to the RTCPeerConnection
       if (caller) {
         callButton.disabled = false;
       } else {
         hangupButton.disabled = false;
-        pc.createAnswer(gotLocalAnswerDescription, handleError);
+        pc.createAnswer(gotLocalAnswerDescription, handleError);    // Creates an answer to a RTCPeerConnection establishment
       }
     }
 
@@ -219,9 +260,9 @@ angular.module('webRtcApp')
       hangupButton.disabled = false;
 
       try {
-        // Reliable Data Channels not yet supported in Chrome
+        // Reliable Data Channels is not yet supported in Chrome
         sendChannel = pc.createDataChannel("sendDataChannel",
-          {reliable: false});
+          {reliable: false});   // Creates a data channel for text messages
         sendChannel.onmessage = handleMessage;
       } catch (e) {
         alert('Failed to create data channel. ' +
@@ -230,7 +271,7 @@ angular.module('webRtcApp')
       sendChannel.onopen = handleSendChannelStateChange;
       sendChannel.onclose = handleSendChannelStateChange;
 
-      pc.createOffer(gotLocalOfferDescription, handleError);
+      pc.createOffer(gotLocalOfferDescription, handleError);    // Creates an offer to a RTCPeerConnection establishment
 
       sendButton.disabled = false;
     }
@@ -238,43 +279,47 @@ angular.module('webRtcApp')
     // Closes the established peer to peer connection
     function hangup() {
       hangupButton.disabled = true;
-      sendChannel.close();
+      sendChannel.close();    // Closes the data channel instance on one of the peers
       if (caller) {
         getVideoButton.disabled = false;
         sendButton.disabled = true;
       } else {
         stop();
       }
-      pc.close();
+      pc.close();   // Closes the RTCPeerConnection instance on one of the peers
       pc = null;
       dataChannelSend.value = "";
       dataChannelReceive.value = "";
       dataChannelSend.disabled = true;
       dataChannelSend.placeholder = "Call ended, please reload the page.";
       if (!hangUpReceiver) {
-        socket.emit('hangup', {clientRoom: clientRoom, clientId: clientId});
+        socket.emit('hangup', {clientRoom: clientRoom, clientId: clientId});    // Signal the hang up to the other peer
       }
     }
 
+    // Function called on a local RTCPeerConnection opening to describe the local peer
     function gotLocalOfferDescription(description){
       pc.setLocalDescription(new RTCSessionDescription(description));
       console.log('Local RTCPeerConnection offer description added.');
-      var serialize = JSON.stringify(description);
+      var serialize = JSON.stringify(description);    // Serializes the description as only strings can be passed through a websocket
       socket.emit('RTCPeerConnectionOffer description', {clientRoom: clientRoom, clientId: clientId, offerDescription: serialize});
     }
 
+    // Function called on a remote RTCPeerConnection opening to describe the remote peer
     function gotRemoteOfferDescription(description){
       pc.setRemoteDescription(new RTCSessionDescription(description));
       console.log('Remote RTCPeerConnection offer description added.');
     }
 
+    // Function called on a remote RTCPeerConnection answering to describe the local peer
     function gotLocalAnswerDescription(description){
       pc.setLocalDescription(new RTCSessionDescription(description));
       console.log('Local RTCPeerConnection answer description added.');
-      var serialize = JSON.stringify(description);
+      var serialize = JSON.stringify(description);    // Serializes the description as only strings can be passed through a websocket
       socket.emit('RTCPeerConnectionAnswer description', {clientRoom: clientRoom, clientId: clientId, answerDescription: serialize});
     }
 
+    // Function called on a local RTCPeerConnection answering to describe the remote peer
     function gotRemoteAnswerDescription(description){
       pc.setRemoteDescription(new RTCSessionDescription(description));
       console.log('Remote RTCPeerConnection answer description added.');
@@ -292,7 +337,7 @@ angular.module('webRtcApp')
           iceCandidatesArray.push(0);
           iceCandidatesArray[0] = event.candidate;
           console.log('New Local Candidate: ' + event.candidate.candidate);
-          var serialize = JSON.stringify(event.candidate);
+          var serialize = JSON.stringify(event.candidate);    // Serializes the ICE candidate as only strings can be passed through a websocket
           socket.emit('iceCandidate', {clientRoom: clientRoom, clientId: clientId, iceCandidate: serialize});
         } else {
           if (newIceCandidate(event.candidate)) {
@@ -300,7 +345,7 @@ angular.module('webRtcApp')
             iceCandidatesArray.push(key);
             iceCandidatesArray[key] = event.candidate;
             console.log('New Local Candidate: ' + event.candidate.candidate);
-            var serialize = JSON.stringify(event.candidate);
+            var serialize = JSON.stringify(event.candidate);    // Serializes the ICE candidate as only strings can be passed through a websocket
             socket.emit('iceCandidate', {clientRoom: clientRoom, clientId: clientId, iceCandidate: serialize});
           } else {
             console.log('Existing Local Candidate: ' + event.candidate.candidate);
@@ -322,10 +367,11 @@ angular.module('webRtcApp')
     // Sends chars string data through the established data channel
     function sendData() {
       var data = sendTextarea.value;
-      dataChannelSend.value = "";
       sendChannel.send(data);
+      dataChannelSend.value = "";   // Clear sending textbox content after the text emission
     }
 
+    // Creates a sending back data channel on a reception data channel opening
     function gotReceiveChannel(event) {
       sendChannel = event.channel;
       sendChannel.onmessage = handleMessage;
@@ -333,22 +379,24 @@ angular.module('webRtcApp')
       sendChannel.onclose = handleReceiveChannelStateChange;
     }
 
+    // Function called on a text message reception by a peer
     function handleMessage(event) {
       receiveTextarea.value = event.data;
     }
 
+    // Function called on an emission data channel opening
     function handleSendChannelStateChange() {
       var readyState = sendChannel.readyState;
-      trace('Send channel state is: ' + readyState);
       enableMessageInterface(readyState == "open");
     }
 
+    // Function called on a reception data channel opening
     function handleReceiveChannelStateChange() {
       var readyState = sendChannel.readyState;
-      trace('Receive channel state is: ' + readyState);
       enableMessageInterface(readyState == "open");
     }
 
+    // Allows to enter text into the send textboxes
     function enableMessageInterface(shouldEnable) {
         if (shouldEnable) {
         dataChannelSend.disabled = false;
