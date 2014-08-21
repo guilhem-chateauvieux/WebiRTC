@@ -353,6 +353,9 @@ angular.module('webRtcApp')
             socket.emit('iceCandidate', {clientRoom: clientRoom, clientId: clientId, iceCandidate: serialize});
           } else {
             console.log('Existing Local Candidate: ' + event.candidate.candidate);
+            //Test: send it anyway
+            var serialize = JSON.stringify(event.candidate);    // Serializes the ICE candidate as only strings can be passed through a websocket
+            socket.emit('iceCandidate', {clientRoom: clientRoom, clientId: clientId, iceCandidate: serialize});
           }
         }
       }
