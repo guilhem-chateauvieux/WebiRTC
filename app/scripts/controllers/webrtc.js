@@ -24,7 +24,7 @@ angular.module('webRtcApp')
     ////////////////////////////////////////////////
 
     var clientRoom = prompt("Enter room name:");
-    if (clientRoom == "") {
+    if ((clientRoom == "") || (clientRoom == null)) {
       clientRoom = "default";
     }
     var displayRoom = document.getElementById("room");
